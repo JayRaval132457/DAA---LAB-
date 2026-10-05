@@ -1,0 +1,135 @@
+// Prim's Algorithm - Minimum Spanning Tree (MST) in C++
+// Compile:  g++ -std=c++11 prim_mst.cpp -o prim_mst
+// Run:      ./prim_mst   (Windows: prim_mst.exe)
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <tuple>
+#include <functional>
+using namespace std;
+
+typedef pair<int, int> pii;   // (weight, node)
+
+struct Edge {
+    int u, v, w;
+};
+
+// Prim's algorithm: returns MST edges, total weight goes into 'total'
+vector<Edge> prim(const vector<vector<pii>>& adj, int start, int& total) {
+    int n = adj.size();
+    vector<bool> visited(n, false);
+    vector<Edge> mst;
+    total = 0;
+
+    // min-heap of (weight, from, to)
+    priority_queue<tuple<int, int, int>,
+                   vector<tuple<int, int, int>>,
+                   greater<tuple<int, int, int>>> pq;
+
+    visited[start] = true;
+    for (auto& e : adj[start])
+        pq.push(make_tuple(e.first, start, e.second));
+
+    while (!pq.empty() && (int)mst.size() < n - 1) {
+        int w, u, v;
+        tie(w, u, v) = pq.top();
+        pq.pop();
+
+        if (visited[v]) continue;      // would form a cycle
+
+        visited[v] = true;
+        mst.push_back({u, v, w});
+        total += w;
+
+        for (auto& e : adj[v])
+            if (!visited[e.second])
+                pq.push(make_tuple(e.first, v, e.second));
+    }
+    return mst;
+}
+
+int main() {
+    int n = 9;                          // nodes: 0..8  ->  A..I
+    vector<Edge> edges = {
+        {0, 1, 4},  {0, 7, 8},
+        {1, 2, 8},  {1, 7, 11},
+        {2, 3, 7},  {2, 5, 4},  {2, 8, 2},
+        {3, 4, 9},  {3, 5, 14},
+        {4, 5, 10},
+        {5, 6, 2},
+        {6, 7, 1},  {6, 8, 6},
+        {7, 8, 7}
+    };
+
+    // Build adjacency list
+    vector<vector<pii>> adj(n);
+    for (auto& e : edges) {
+        adj[e.u].push_back({e.w, e.v});
+        adj[e.v].push_back({e.w, e.u});
+    }
+
+    // Print the graph
+    cout << "GRAPH (adjacency list):\n";
+    for (int i = 0; i < n; i++) {
+        cout << "  " << char('A' + i) << " : ";
+        for (auto& e : adj[i])
+            cout << char('A' + e.second) << "(" << e.first << ") ";
+        cout << "\n";
+    }
+
+    // Run Prim's algorithm from node 0 (A)
+    int total = 0;
+    vector<Edge> mst = prim(adj, 0, total);
+
+    // Print the MST
+    cout << "\nMINIMUM SPANNING TREE EDGES:\n";
+    for (auto& e : mst)
+        cout << "  " << char('A' + e.u) << " - " << char('A' + e.v)
+             << "  (weight " << e.w << ")\n";
+
+    cout << "\nTotal weight of MST = " << total << "\n";
+
+    // ---------- Calculation / checks ----------
+    cout << "\nCALCULATION:\n";
+
+    // 1. Edge count
+    cout << "* Edge count: " << n << " nodes give " << n << " - 1 = "
+         << n - 1 << " edges, and the MST has " << mst.size() << " edges.\n";
+
+    // 2. MST weight
+    cout << "* MST weight: ";
+    for (size_t i = 0; i < mst.size(); i++) {
+        if (i > 0) cout << " + ";
+        cout << mst[i].w;
+    }
+    cout << " = " << total << "\n";
+
+    // 3. Rejected edges (edges of the graph that are not in the MST)
+    cout << "* Rejected edges: ";
+    int rejected = 0;
+    bool first = true;
+    for (auto& e : edges) {
+        bool inMst = false;
+        for (auto& m : mst)
+            if ((m.u == e.u && m.v == e.v) || (m.u == e.v && m.v == e.u))
+                inMst = true;
+        if (!inMst) {
+            if (!first) cout << " + ";
+            cout << char('A' + e.u) << "-" << char('A' + e.v) << " (" << e.w << ")";
+            rejected += e.w;
+            first = false;
+        }
+    }
+    cout << " = " << rejected << "\n";
+
+    // 4. Total of all edges
+    int allWeight = 0;
+    for (auto& e : edges) allWeight += e.w;
+    cout << "* Total of all " << edges.size() << " edges: " << total << " + "
+         << rejected << " = " << total + rejected
+         << ", which matches adding up every weight in the graph ("
+         << allWeight << ").\n";
+
+    return 0;
+}
